@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Web Interactor | SuperAGI",
+  "version": "1.0",
+  "description": "A simple chrome extension that automates browser tasks using SuperAGI",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["activeTab","tabs","storage"],
+  "host_permissions":["https://localhost:3000/"]
+} 
