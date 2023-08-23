@@ -15,14 +15,15 @@ var port = chrome.runtime.connect({name: "knockknock"});
 
 port.onMessage.addListener( async function(msg) {
   console.log("Message Received from Service", msg)
-  handleAction(msg)
+  const toLoop = handleAction(msg)
   await chrome.storage.local.set({'last_action': JSON.stringify(msg)});
-  
   if( msg["status"] == "COMPLETED") {
     chrome.storage.sync.clear()
   }
   else {
-    loop(JSON.stringify(msg))
+    if (toLoop){
+      loop(JSON.stringify(msg))
+    }
   }
 });
 const loop = (last_action) => {
@@ -44,14 +45,14 @@ window.addEventListener('load',()=>{
     const data = loadSavedData("agent_execution_id");
     
     let agent_execution_id=null
-    let extractedDOM=null
+    let extractedDOM=
     data.then((res) => {
       // console.log("res",res);
       if(res){
         console.log("Reached 4")
         console.log(res)
         setTimeout(()=>{
-          extractedDOM=extractDOM()
+          extractedDOM =  extractDOM()
           const last_action = loadSavedData('last_action')
           last_action.then(ress => {
             port.postMessage({ agent_execution_id:res, dom_content:extractedDOM, last_action:ress,page_url:window.location.href });
@@ -128,12 +129,13 @@ const transformElement = (element) =>{
     const labelledById = element.getAttribute('aria-labelledby')
     const controls = element.getAttribute('aria-controls')
     const dataId = element.getAttribute('data-test-id')
+    const interactiveElements = ["navigation", "link", "menu", "input", "button","textarea","input"]
     if(label == "Compose new Message")
       return ""
     if(dataId && dataId == "SideNav_NewTweet_Button")
       return ""
     if (role) {
-      transformedElementString = `<${role === 'combobox' ? 'textbox' : role} id=${counter} ${label && label.length > 0 ? ` label="${label}"` : '' } ${dataId && dataId.length > 0 ? ` data-id="${dataId}"` : '' } >${innerText}</${role === 'combobox' ? 'textbox' : role}>`
+      transformedElementString = `<${interactiveElements.includes(element.tagName.toLowerCase())? element.tagName.toLowerCase() :  role === 'combobox' ? 'textbox' : role} id=${counter} ${label && label.length > 0 ? ` label="${label}"` : '' } ${dataId && dataId.length > 0 ? ` data-id="${dataId}"` : '' } >${innerText}</${interactiveElements.includes(element.tagName.toLowerCase())? element.tagName.toLowerCase() :  role === 'combobox' ? 'textbox' : role}>`
     } else {
       transformedElementString = `<${element.tagName.toLowerCase()} id=${counter} ${label && label.length > 0 ? ` label="${label}"` : '' } ${dataId && dataId.length > 0 ? ` data-id="${dataId}"` : '' } >${innerText}</${element.tagName.toLowerCase()}>`
     }
@@ -164,7 +166,7 @@ const handleAction = (actionObj) => {
     else {
       window.location.href = `https://${action_reference_param}`
     }
-    return
+    return false
   }
   if (action == "CLICK")  {
     map[action_reference_element].focus()
@@ -180,4 +182,5 @@ const handleAction = (actionObj) => {
     }))
     ss.clearData()
   }
+  return true
 }
