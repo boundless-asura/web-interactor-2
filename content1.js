@@ -1,7 +1,6 @@
 const superAGIPort = chrome.runtime.connect({name: "super_agi"});
 
 window.addEventListener('load' ,async() => {
-  await clearState()
     let currentState = null
 
     try {
@@ -138,6 +137,12 @@ const handleAction = (actionObj) => {
       ss.clearData()
     }
     if (action == "TYPESUBMIT") {
+      const ke = new KeyboardEvent('keydown', {
+        bubbles: true, cancelable: true, keyCode: 13
+      });
+      map[action_reference_element].value=action_reference_param
+      map[action_reference_element].focus()
+      map[action_reference_element].dispatchEvent(ke);
       //todo
     }
     return true
