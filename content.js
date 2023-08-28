@@ -43,9 +43,9 @@ const loop = (last_action) => {
 window.addEventListener('load',()=>{
     console.log(window.location)
     const data = loadSavedData("agent_execution_id");
+    const dat1 = chrome.storage.local.get("agent_execution_id")
     
     let agent_execution_id=null
-    let extractedDOM=
     data.then((res) => {
       // console.log("res",res);
       if(res){
@@ -69,12 +69,7 @@ window.addEventListener('load',()=>{
     await chrome.storage.local.set({'agent_execution_id': agent_execution_id2});
     await chrome.storage.local.set({'state': "TRIGGER"});
     await chrome.storage.local.set({'last_action': "No action taken yet"})
-    // localStorage.setItem("agent_execution_id", agent_execution_id)
-    // localStorage.setItem("state", "TRIGGER")
     console.log("Memory SET", agent_execution_id2)
-    // extractedDOM=extractDOM()
-    //       // console.log(extractedDOM)
-    //       port.postMessage({ agent_execution_id:res, dom_content:extractedDOM,last_action:"No action taken yet" });
     window.open('https://google.com', '_blank')
 })})
 
