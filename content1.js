@@ -1,26 +1,29 @@
 const superAGIPort = chrome.runtime.connect({name: "super_agi"});
 
 window.addEventListener('load' ,async() => {
+  await clearState()
     let currentState = null
-    console.log("Window location", window.location.href)
+
     try {
         currentState = await getCurrentState()
     }
     catch(err) {
         console.log("No state FOUND")
     }
+    console.log("Window location", window.location.href, currentState)
     
-    if (window.location.href == "http://localhost:3000/" && currentState == null)
+    if (window.location.href == "http://localhost:3000/" && (currentState == null || currentState["status"] == "POLLING"))
     {
         const newState = await setStateVariable("status", "POLLING")
         console.log("NEW STATE", newState)
         superAGIPort.postMessage(newState);
     } else if(currentState && currentState["status"] == "RUNNING") {
-      const extractDOM = extractDOM()
+      await wait(5000)
+      const extractedDOM = extractDOM()
       const pageUrl = window.location.href
       const agentExecutionId = currentState["agent_execution_id"]
       const lastAction = currentState["last_action"]
-      await superAGIPort.postMessage({status:"RUNNING", dom_content:extractDOM, page_url:pageUrl, agent_execution_id:agentExecutionId, last_action:lastAction})
+      await superAGIPort.postMessage({status:"RUNNING", dom_content:extractedDOM, page_url:pageUrl, agent_execution_id:agentExecutionId, last_action:lastAction})
     } else {
         await clearState()
     }
@@ -133,6 +136,9 @@ const handleAction = (actionObj) => {
         cancelable:true
       }))
       ss.clearData()
+    }
+    if (action == "TYPESUBMIT") {
+      //todo
     }
     return true
 }

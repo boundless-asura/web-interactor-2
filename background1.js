@@ -20,7 +20,7 @@ chrome.runtime.onConnect.addListener((port) => {
 
 
 async function getNextStep(agent_execution_id,page_url, dom_content, last_action) {
-    const url = "http://localhost:3000/api/web_interactor/get_next_step"
+    const url = "http://localhost:3000/api/web_interactor/get_next_action"
     const formData = new FormData()
     formData.append('dom_content', dom_content);
     formData.append('agent_execution_id', agent_execution_id);
@@ -36,6 +36,7 @@ async function getNextStep(agent_execution_id,page_url, dom_content, last_action
             headers: {'Content-Type': 'application/x-www-form-urlencoded'}
         })
         data = await res.json()
+        console.log("NEXT ACTION",data)
     }
     catch (err) {
         console.error("CHECK tIS", err)
@@ -64,6 +65,7 @@ async function handlePolling() {
             console.error("CHECK tIS", err)
         }
     } while(agent_execution_id == null)
+    console.log("POLLED",agent_execution_id)
     return agent_execution_id
 
 }
