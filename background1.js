@@ -14,6 +14,12 @@ chrome.runtime.onConnect.addListener((port) => {
             if (nextStep) {
                 port.postMessage(nextStep)
             }
+        } else if(message["status"] == "PAGE_OPENED") {
+            const agent_execution_id = await handlePolling()
+            const nextStep = await getNextStep(agent_execution_id, message["page_url"], message["dom_content"], message["last_action"])
+            if (nextStep) {
+                port.postMessage(nextStep)
+            }
         }
     })
 })

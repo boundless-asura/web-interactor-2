@@ -2,16 +2,23 @@ const superAGIPort = chrome.runtime.connect({name: "super_agi"});
 
 window.addEventListener('load' ,async() => {
     let currentState = null
-
+    let currentPage = null
     try {
         currentState = await getCurrentState()
+        currentPage = currentState["new_page"] ? currentState["new_page"] : false
+        await clearState()
+        currentState = null
+        await setStateVariable("new_page", currentPage)
     }
     catch(err) {
         console.log("No state FOUND")
     }
     console.log("Window location", window.location.href, currentState)
-    
-    if (window.location.href == "http://localhost:3000/" && (currentState == null || currentState["status"] == "POLLING"))
+    if(currentPage) {
+      const extractedDOM = extractDOM()
+      await superAGIPort.postMessage({status:"PAGE_OPENED", page_url:window.location.href, last_action:"No action taken yet!", dom_content:extractedDOM })
+    }
+    else if (currentState == null || currentState["status"] == "POLLING")
     {
         const newState = await setStateVariable("status", "POLLING")
         console.log("NEW STATE", newState)
@@ -23,16 +30,19 @@ window.addEventListener('load' ,async() => {
       const agentExecutionId = currentState["agent_execution_id"]
       const lastAction = currentState["last_action"]
       await superAGIPort.postMessage({status:"RUNNING", dom_content:extractedDOM, page_url:pageUrl, agent_execution_id:agentExecutionId, last_action:lastAction})
-    } else {
+    } else {   
         await clearState()
     }
 })
 
 superAGIPort.onMessage.addListener(async (message) => {
+    const currentState = await getCurrentState()
+    const newPage = currentState["new_page"] ? currentState["new_page"] : false
     if(message["status"] == "RUNNING") {
         await setState({
             "status": message["status"],
             "agent_execution_id": message["agent_execution_id"],
+            "new_page":newPage
         })
         const toLoop = handleAction(message)
         await setStateVariable("last_action", JSON.stringify(message))
@@ -41,11 +51,14 @@ superAGIPort.onMessage.addListener(async (message) => {
         }
     } else if (message["status"] == "TRIGGER") {
         message["status"] = "RUNNING"
+        message["new_page"] = newPage
         await setState(message)
-        window.open('https://google.com', '_blank')
+        if(!newPage) {
+          await setStateVariable("new_page", true)
+          window.open('https://google.com', '_blank')
+        }
     } else if(message["status"] == "COMPLETED") {
         handleAction(message)
-        await clearState()
     }
 })
 
@@ -108,6 +121,8 @@ function clearState() {
 
 
 const handleAction = (actionObj) => {
+  extractDOM()
+  console.log("ACTION TO TAKE",actionObj)
     const {action,action_reference_element, action_reference_param} = actionObj
     if (action_reference_element && map[action_reference_element])
     {
@@ -127,14 +142,25 @@ const handleAction = (actionObj) => {
       map[action_reference_element].click()
     }
     if (action == "TYPE") {
-      const ss = new DataTransfer()
-      ss.setData("text/plain", action_reference_param)
-      map[action_reference_element].dispatchEvent(new ClipboardEvent("paste", {
-        clipboardData: ss,
-        bubbles:true,
-        cancelable:true
-      }))
-      ss.clearData()
+      const interactiveElements = ["navigation", "menu", "input", "button","textarea"]
+      if(interactiveElements.includes(map[action_reference_element].tagName)){
+        const ke = new KeyboardEvent('keydown', {
+          bubbles: true, cancelable: true, keyCode: 13
+        });
+        map[action_reference_element].value=action_reference_param
+        map[action_reference_element].focus()
+        map[action_reference_element].dispatchEvent(ke);
+      }else {
+        const ss = new DataTransfer()
+        ss.setData("text/plain", action_reference_param)
+        map[action_reference_element].dispatchEvent(new ClipboardEvent("paste", {
+          clipboardData: ss,
+          bubbles:true,
+          cancelable:true
+        }))
+        ss.clearData()
+      }
+      
     }
     if (action == "TYPESUBMIT") {
       const ke = new KeyboardEvent('keydown', {
@@ -152,15 +178,17 @@ let counter = 0
 const extractDOM = () => {
     map = {}
     counter = 0
-    const elementsWithRole = Array.from(document.querySelectorAll('[role]'));
+    const e1 = Array.from(document.querySelectorAll('[role=textbox]'));
+    const e2 = Array.from(document.querySelectorAll('[role=button]'));
+    const e3 = Array.from(document.querySelectorAll('[role=navigation]'));
+    const e4 = Array.from(document.querySelectorAll('[role=search]'));
+    const elementsArray = [e1,e2,e3,e4]
+
     let transformedElements = '';
     let initial = true
     
     const setOfElements = new Set()
-    const interactiveElements = ["navigation", "link", "menu", "input", "button","textarea","input"]
-    for(let i=0;i < elementsWithRole.length ;i++) {
-      setOfElements.add(elementsWithRole[i])
-    }
+    const interactiveElements = ["navigation", "menu", "input", "button","textarea"]
 
     for (let i=0;i<interactiveElements.length;i++) {
       const elementType = interactiveElements[i]
@@ -170,6 +198,12 @@ const extractDOM = () => {
         setOfElements.add(elements[j])
       }
     }
+    for (let i=0;i<elementsArray.length;i++) {
+      for (let j=0;j<elementsArray[i].length;j++) {
+        setOfElements.add(elementsArray[i][j]) 
+      }
+    }
+    console.log(setOfElements)
     setOfElements.forEach((element) => {
       const role = element.getAttribute('role');
 
@@ -177,9 +211,7 @@ const extractDOM = () => {
           transformedElements = transformElement(element)
           initial = false
       } else {
-          transformedElements = `${transformedElements}
-          
-          ${transformElement(element)}`
+          transformedElements = `${transformedElements}${transformElement(element)}`
       }
         
     })
@@ -187,35 +219,24 @@ const extractDOM = () => {
 }
 
 const transformElement = (element) =>{
-    if (element == null || element == undefined )
-      return  ""
-    const role = element.getAttribute('role') ? element.getAttribute('role').toLowerCase() : null ;
-    const label = element.getAttribute('aria-label') ? element.getAttribute('aria-label').toLowerCase() : null;
-    let transformedElementString = ""
-    const innerText = element.textContent.trim();
-    const describedById = element.getAttribute('aria-describedby')
-    const labelledById = element.getAttribute('aria-labelledby')
-    const controls = element.getAttribute('aria-controls')
-    const dataId = element.getAttribute('data-test-id')
-    const interactiveElements = ["navigation", "link", "menu", "input", "button","textarea","input"]
-    if(label == "Compose new Message")
-      return ""
-    if(dataId && dataId == "SideNav_NewTweet_Button")
-      return ""
-    if (role) {
-      transformedElementString = `<${interactiveElements.includes(element.tagName.toLowerCase())? element.tagName.toLowerCase() :  role === 'combobox' ? 'textbox' : role} id=${counter} ${label && label.length > 0 ? ` label="${label}"` : '' } ${dataId && dataId.length > 0 ? ` data-id="${dataId}"` : '' } >${innerText}</${interactiveElements.includes(element.tagName.toLowerCase())? element.tagName.toLowerCase() :  role === 'combobox' ? 'textbox' : role}>`
-    } else {
-      transformedElementString = `<${element.tagName.toLowerCase()} id=${counter} ${label && label.length > 0 ? ` label="${label}"` : '' } ${dataId && dataId.length > 0 ? ` data-id="${dataId}"` : '' } >${innerText}</${element.tagName.toLowerCase()}>`
-    }
+    let elementString = `<${element.tagName.toLowerCase()}`
+    elementString += ` id=${counter}`
     map[counter] = element
-    counter++;
-    if (labelledById && labelledById.length > 0) {
-        let labelledParentString = transformElement(document.getElementById(labelledById))
-        return  `${labelledParentString}${transformedElementString}`
+    counter++
+    const elementAttributes = element.attributes
+    for (let i=0;i<elementAttributes.length;i++) {
+      const {name, value} = elementAttributes[i]  
+      if(name.includes('label'))
+      {
+        elementString += ` label=${value}`
+      }
+      if(name.includes("role")){
+        elementString += ` role=${value}`
+      }
     }
-    // if (describedById && describedById.length > 0) {
-    //     let describedParentString = transformElement(document.getElementById(describedById))
-    //     return `${describedParentString}${transformedElementString}`        
-    // }
-    return transformedElementString 
+    elementString += `>`
+    elementString += element.textContent.trim()
+    elementString += `</${element.tagName.toLowerCase()}>`
+
+    return elementString
 }
