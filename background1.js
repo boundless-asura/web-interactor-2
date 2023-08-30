@@ -2,11 +2,23 @@ function wait(milliseconds) {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
 }
 
+chrome.storage.local.clear();
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.message === "refreshLocalhostTabs") {
+        console.log("messages sent to background1")
+        chrome.tabs.query({url: '*://localhost/*'}, function(tabs) {
+            tabs.forEach(function(tab){
+                chrome.tabs.reload(tab.id);
+            });
+        });
+    }
+});
 chrome.runtime.onConnect.addListener((port) => {
     console.assert(port.name === "super_agi");
     port.onMessage.addListener(async (message) => {
         if(message["status"] == "POLLING") {
             const agent_execution_id = await handlePolling()
+           
             port.postMessage({"status":"TRIGGER", "agent_execution_id":agent_execution_id, "last_action":"No action taken yet"})
         }
         else if(message["status"] == "RUNNING" || message["status"] == "TRIGGER") {

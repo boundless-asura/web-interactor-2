@@ -1,6 +1,23 @@
 const superAGIPort = chrome.runtime.connect({name: "super_agi"});
 
+
 window.addEventListener('load' ,async() => {
+    // await clearState()
+    
+    // window.localStorage.clear(); 
+    // if(window.location.href.includes("localhost:3000")){
+    //   window.location.href='http://localhost:3000/'
+    // }
+  //   console.log("started localhost")
+  //   chrome.storage.local.get(null, function(items) {
+  //     for (key in items) {
+  //         if(key=="state" && window.location.href.includes("localhost")){
+  //           console.log("key",key)
+  //           chrome.storage.local.clear();
+  //         }
+          
+  //     }
+  //  });
     let currentState = null
     let currentPage = null
     try {
@@ -59,6 +76,16 @@ superAGIPort.onMessage.addListener(async (message) => {
         }
     } else if(message["status"] == "COMPLETED") {
         handleAction(message)
+        // await clearState()
+        console.log("completed done")
+    }else if(message["status"] == "AGENT_COMPLETED"){
+        handleAction(message)
+        console.log("AGENT COMPLETED SUCCESSFULLY")
+        var queryInfo = {
+          url: '*://localhost/*'
+        };
+        chrome.runtime.sendMessage({message: "refreshLocalhostTabs"});
+        await clearState()
     }
 })
 
@@ -122,6 +149,7 @@ function clearState() {
 
 const handleAction = (actionObj) => {
   extractDOM()
+  console.log("****",extractDOM())
   console.log("ACTION TO TAKE",actionObj)
     const {action,action_reference_element, action_reference_param} = actionObj
     if (action_reference_element && map[action_reference_element])
@@ -142,35 +170,50 @@ const handleAction = (actionObj) => {
       map[action_reference_element].click()
     }
     if (action == "TYPE") {
-      const interactiveElements = ["navigation", "menu", "input", "button","textarea"]
-      if(interactiveElements.includes(map[action_reference_element].tagName)){
-        const ke = new KeyboardEvent('keydown', {
-          bubbles: true, cancelable: true, keyCode: 13
-        });
-        map[action_reference_element].value=action_reference_param
-        map[action_reference_element].focus()
-        map[action_reference_element].dispatchEvent(ke);
-      }else {
-        const ss = new DataTransfer()
-        ss.setData("text/plain", action_reference_param)
-        map[action_reference_element].dispatchEvent(new ClipboardEvent("paste", {
-          clipboardData: ss,
-          bubbles:true,
-          cancelable:true
-        }))
-        ss.clearData()
-      }
-      
-    }
-    if (action == "TYPESUBMIT") {
       const ke = new KeyboardEvent('keydown', {
         bubbles: true, cancelable: true, keyCode: 13
       });
+      console.log("reached map. action reference element->",action_reference_element,map[action_reference_element])
       map[action_reference_element].value=action_reference_param
-      map[action_reference_element].focus()
+      // map[action_reference_element].focus()
       map[action_reference_element].dispatchEvent(ke);
-      //todo
+      const ss = new DataTransfer()
+      ss.setData("text/plain", action_reference_param)
+      map[action_reference_element].dispatchEvent(new ClipboardEvent("paste", {
+        clipboardData: ss,
+        bubbles:true,
+        cancelable:true
+      }))
+      ss.clearData()
+      // const interactiveElements = ["navigation", "menu", "input", "button","textarea"]
+      // if(interactiveElements.includes(map[action_reference_element].tagName)){
+      //   const ke = new KeyboardEvent('keydown', {
+      //     bubbles: true, cancelable: true, keyCode: 13
+      //   });
+      //   map[action_reference_element].value=action_reference_param
+      //   map[action_reference_element].focus()
+      //   map[action_reference_element].dispatchEvent(ke);
+      // }else {
+      //   const ss = new DataTransfer()
+      //   ss.setData("text/plain", action_reference_param)
+      //   map[action_reference_element].dispatchEvent(new ClipboardEvent("paste", {
+      //     clipboardData: ss,
+      //     bubbles:true,
+      //     cancelable:true
+      //   }))
+      //   ss.clearData()
+      // }
+      
     }
+    // if (action == "TYPESUBMIT") {
+    //   const ke = new KeyboardEvent('keydown', {
+    //     bubbles: true, cancelable: true, keyCode: 13
+    //   });
+    //   map[action_reference_element].value=action_reference_param
+    //   map[action_reference_element].focus()
+    //   map[action_reference_element].dispatchEvent(ke);
+    //   //todo
+    // }
     return true
 }
 let map = {}
