@@ -40,6 +40,7 @@ window.addEventListener('load' ,async() => {
     console.log("Window location", window.location.href, currentPage,currentURL)
     if(currentPage) {
       const extractedDOM = extractDOM()
+      console.log("Page_opened_dom",extractedDOM)
       await superAGIPort.postMessage({status:"PAGE_OPENED", page_url:window.location.href, last_action:"No action taken yet!", dom_content:extractedDOM })
     }
     else if (currentState == null || currentState["status"] == "POLLING")
@@ -303,7 +304,7 @@ const transformElement = (element) =>{
       }
     }
     elementString += `>`
-    elementString += element.textContent.trim()
+    elementString += element.textContent.slice(0,50)
     elementString += `</${element.tagName.toLowerCase()}>`
 
     return elementString
