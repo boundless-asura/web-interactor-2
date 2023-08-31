@@ -45,19 +45,26 @@ chrome.runtime.onConnect.addListener((port) => {
 
 async function getNextStep(agent_execution_id,page_url, dom_content, last_action) {
     const url = "http://localhost:3000/api/web_interactor/get_next_action"
-    const formData = new FormData()
-    formData.append('dom_content', dom_content);
-    formData.append('agent_execution_id', agent_execution_id);
-    formData.append('last_action_status', true)
-    formData.append("last_action", last_action)
-    formData.append("page_url" , page_url)
+    const message = {
+        'dom_content': dom_content,
+        'agent_execution_id': agent_execution_id,
+        'last_action_status': true,
+        'last_action':last_action,
+        'page_url':page_url
+    }
+    // const formData = new FormData()
+    // formData.append('dom_content', dom_content);
+    // formData.append('agent_execution_id', agent_execution_id);
+    // formData.append('last_action_status', true)
+    // formData.append("last_action", last_action)
+    // formData.append("page_url" , page_url)
     let data = null
     try {
         const res  = await fetch(url, {
             method:"POST",
             mode:"cors",
-            body:formData,
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+            body:JSON.stringify(message),
+            headers: {'Content-Type': 'text/plain'}
         })
         data = await res.json()
         data["agent_execution_id"]=agent_execution_id
