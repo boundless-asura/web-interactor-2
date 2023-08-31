@@ -2,6 +2,7 @@ const superAGIPort = chrome.runtime.connect({name: "super_agi"});
 
 
 window.addEventListener('load' ,async() => {
+    console.log("new page loaded",window.location.href)
     // await clearState()
     
     // window.localStorage.clear(); 
@@ -20,9 +21,15 @@ window.addEventListener('load' ,async() => {
   //  });
     let currentState = null
     let currentPage = null
+    let currentURL= null
+
     try {
         currentState = await getCurrentState()
         currentPage = currentState["new_page"] ? currentState["new_page"] : false
+        // currentURL = currentState["page_url"]
+        // // if(currentURL === window.location.href){
+          
+        // // }
         await clearState()
         currentState = null
         await setStateVariable("new_page", currentPage)
@@ -30,7 +37,7 @@ window.addEventListener('load' ,async() => {
     catch(err) {
         console.log("No state FOUND")
     }
-    console.log("Window location", window.location.href, currentState)
+    console.log("Window location", window.location.href, currentPage,currentURL)
     if(currentPage) {
       const extractedDOM = extractDOM()
       await superAGIPort.postMessage({status:"PAGE_OPENED", page_url:window.location.href, last_action:"No action taken yet!", dom_content:extractedDOM })
@@ -75,8 +82,23 @@ superAGIPort.onMessage.addListener(async (message) => {
           window.open('https://google.com', '_blank')
         }
     } else if(message["status"] == "COMPLETED") {
-        handleAction(message)
+        let toLoop = handleAction(message)
+        // await setStateVariable("last_action", JSON.stringify(message))
+        // if (toLoop) {
+        //     window.dispatchEvent(new CustomEvent("loop_interactor"))
+        // }
+        // handleAction(message)
         // await clearState()
+        if(toLoop){
+          await wait(5000)
+          const extractedDOM = extractDOM()
+          const pageUrl = window.location.href
+          const agentExecutionId = message["agent_execution_id"]
+          console.log("agent_ex",agentExecutionId,"curr_State",currentState)
+          const lastAction = currentState["last_action"]
+          await superAGIPort.postMessage({status:"RUNNING", dom_content:extractedDOM, page_url:pageUrl, agent_execution_id:agentExecutionId, last_action:lastAction})
+          // toLoop=handleAction(message)
+        }
         console.log("completed done")
     }else if(message["status"] == "AGENT_COMPLETED"){
         handleAction(message)
@@ -158,11 +180,14 @@ const handleAction = (actionObj) => {
     }
     if (action == "GO_TO") {
       if (action_reference_param.includes("https://")) {
+        // setStateVariable("page_url",action_reference_param)
         window.location.href = action_reference_param
       }
       else {
+        // setStateVariable("page_url",`https://${action_reference_param}`)
         window.location.href = `https://${action_reference_param}`
       }
+
       return false
     }
     if (action == "CLICK")  {
