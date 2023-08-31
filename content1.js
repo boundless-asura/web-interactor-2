@@ -304,7 +304,7 @@ const transformElement = (element) =>{
       }
     }
     elementString += `>`
-    elementString += element.textContent.slice(0,50)
+    elementString += element.textContent.slice(0,30)
     elementString += `</${element.tagName.toLowerCase()}>`
 
     return elementString
