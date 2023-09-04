@@ -192,31 +192,32 @@ const handleAction = (actionObj) => {
       return false
     }
     if (action == "CLICK")  {
-      map[action_reference_element].focus()
+      console.log("<><>for click",map[action_reference_element],action_reference_element)
+      // map[action_reference_element].focus()
       map[action_reference_element].click()
     }
     if (action == "TYPE") {
-      if(window.location.href.includes("twitter")){
-        console.log("on twitter")
-        const ss = new DataTransfer()
-        ss.setData("text/plain", action_reference_param.slice(0,200))
-        map[action_reference_element].dispatchEvent(new ClipboardEvent("paste", {
-          clipboardData: ss,
-          bubbles:true,
-          cancelable:true
-        }))
-        ss.clearData()
-      }else{
-        const ke = new KeyboardEvent('keydown', {
-          bubbles: true, cancelable: true, keyCode: 13
-        });
-        console.log("reached map. action reference element->",action_reference_element,map[action_reference_element])
-        map[action_reference_element].value=action_reference_param
-        // map[action_reference_element].focus()
-        map[action_reference_element].dispatchEvent(ke);
-        map[action_reference_element].dispatchEvent(ke);
-      }
       
+      // console.log("on twitter")
+      const ss = new DataTransfer()
+      ss.setData("text/plain", action_reference_param.slice(0,200))
+      map[action_reference_element].dispatchEvent(new ClipboardEvent("paste", {
+        clipboardData: ss,
+        bubbles:true,
+        cancelable:true
+      }))
+      ss.clearData()
+      
+      const ke = new KeyboardEvent('keydown', {
+        bubbles: true, cancelable: true, keyCode: 13
+      });
+      console.log("reached map. action reference element->",action_reference_element,map[action_reference_element])
+      map[action_reference_element].value=action_reference_param
+      // map[action_reference_element].focus()
+      map[action_reference_element].dispatchEvent(ke);
+      map[action_reference_element].dispatchEvent(ke);
+      
+    
       
       // const interactiveElements = ["navigation", "menu", "input", "button","textarea"]
       // if(interactiveElements.includes(map[action_reference_element].tagName)){
@@ -264,7 +265,7 @@ const extractDOM = () => {
     let initial = true
     
     const setOfElements = new Set()
-    const interactiveElements = ["navigation", "menu", "input", "button","textarea"]
+    const interactiveElements = ["navigation", "menu", "input", "button","textarea","textbox"]
 
     for (let i=0;i<interactiveElements.length;i++) {
       const elementType = interactiveElements[i]
