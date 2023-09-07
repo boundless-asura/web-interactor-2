@@ -39,7 +39,9 @@ window.addEventListener('load' ,async() => {
     }
     console.log("Window location", window.location.href, currentPage,currentURL)
     if(currentPage) {
+      await wait(5000)
       const extractedDOM = extractDOM()
+
       console.log("Page_opened_dom",extractedDOM)
       await superAGIPort.postMessage({status:"PAGE_OPENED", page_url:window.location.href, last_action:"No action taken yet!", dom_content:extractedDOM })
     }
@@ -172,7 +174,7 @@ function clearState() {
 
 const handleAction = (actionObj) => {
   extractDOM()
-  console.log("****",extractDOM())
+  // console.log("****",extractDOM())
   console.log("ACTION TO TAKE",actionObj)
     const {action,action_reference_element, action_reference_param} = actionObj
     if (action_reference_element && map[action_reference_element])
@@ -252,9 +254,27 @@ const handleAction = (actionObj) => {
 }
 let map = {}
 let counter = 0
-const extractDOM = () => {
+const extractDOM_dep = () => {
     map = {}
     counter = 0
+    const bodyHTML=document.body.innerHTML
+    const elements = document.querySelectorAll("*")
+    const result =""
+    for (let i=0;i<elements.length;i++) {
+      const element = elements[i]
+      if(element.id) {
+        let oldId = element.id
+        element.id = i
+        const element_string = element.outerHTML
+        result += element_string + "\n"
+        element.id = oldId  
+      }else {
+      element.id = i
+      const element_string = element.outerHTML
+      result += element_string + "\n"
+      }
+    }
+    return result
     const e1 = Array.from(document.querySelectorAll('[role=textbox]'));
     const e2 = Array.from(document.querySelectorAll('[role=button]'));
     const e3 = Array.from(document.querySelectorAll('[role=navigation]'));
@@ -266,7 +286,7 @@ const extractDOM = () => {
     
     const setOfElements = new Set()
     const interactiveElements = ["navigation", "menu", "input", "button","textarea","textbox"]
-
+    // const interactiveElements = ["navigation", "menu", "input", "button","textarea","textbox","span","p"]
     for (let i=0;i<interactiveElements.length;i++) {
       const elementType = interactiveElements[i]
       const elements = document.getElementsByTagName(elementType)
@@ -317,3 +337,52 @@ const transformElement = (element) =>{
 
     return elementString
 }
+
+function generateStringFromDOM(node) {
+  let result = '';
+  let idCounter = 1;
+
+  function preorderTraversal(node) {
+    if (node !== null) {
+      // Process the current node
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        // Assign an id attribute
+        node.setAttribute('id', idCounter);
+        map[idCounter] = node
+        idCounter++;
+
+        // Append the opening tag to the result
+        result += '<' + node.tagName.toLowerCase();
+
+        // Append attributes
+        const attributes = node.attributes;
+        for (let i = 0; i < attributes.length; i++) {
+          const attr = attributes[i];
+          result += ` ${attr.name}="${attr.value}"`;
+        }
+
+        result += '>';
+      }
+
+      // Traverse child nodes
+      const childNodes = node.childNodes;
+      for (let i = 0; i < childNodes.length; i++) {
+        const childNode = childNodes[i];
+        preorderTraversal(childNode);
+      }
+
+      // Append the closing tag for element nodes
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        result += `</${node.tagName.toLowerCase()}>`;
+      }
+    }
+  }
+
+  // Start the traversal from the root of the DOM tree
+  preorderTraversal(node);
+
+  return result;
+}
+
+// Example usage:
+const extractDOM = () => {map = {};return generateStringFromDOM(document.body)};
