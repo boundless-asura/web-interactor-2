@@ -195,8 +195,38 @@ const handleAction = (actionObj) => {
     }
     if (action == "CLICK")  {
       console.log("<><>for click",map[action_reference_element],action_reference_element)
-      // map[action_reference_element].focus()
-      map[action_reference_element].click()
+      if(window.location.href.includes('compose=new')){
+        map[action_reference_element].click()
+        return true;
+      }
+      const mouseDownEvent = new MouseEvent('mousedown', {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      map[action_reference_element].dispatchEvent(mouseDownEvent);
+      
+      // Simulate a mouse up event
+      const mouseUpEvent = new MouseEvent('mouseup', {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      map[action_reference_element].dispatchEvent(mouseUpEvent);
+      
+      // Simulate a click event
+      const clickEvent = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      map[action_reference_element].dispatchEvent(clickEvent);
+      console.log("yup click",map[action_reference_element])
+      if(map[action_reference_element].tagName=='input'){
+        console.log("yes input",map[action_reference_element])
+        map[action_reference_element].value=''
+      }
+     
     }
     if (action == "TYPE") {
       
@@ -209,15 +239,20 @@ const handleAction = (actionObj) => {
         cancelable:true
       }))
       ss.clearData()
-      
-      const ke = new KeyboardEvent('keydown', {
+      map[action_reference_element].innerText=action_reference_param
+      const ke1 = new KeyboardEvent('keydown', {
+        bubbles: true, cancelable: true, keyCode: 13
+      });
+      const ke2 = new KeyboardEvent('keyup', {
         bubbles: true, cancelable: true, keyCode: 13
       });
       console.log("reached map. action reference element->",action_reference_element,map[action_reference_element])
       map[action_reference_element].value=action_reference_param
       // map[action_reference_element].focus()
-      map[action_reference_element].dispatchEvent(ke);
-      map[action_reference_element].dispatchEvent(ke);
+      if(!window.location.href.includes('calendar') && !window.location.href.includes('slack')){
+        map[action_reference_element].dispatchEvent(ke1);
+        map[action_reference_element].dispatchEvent(ke2);
+      }
       
     
       
@@ -347,9 +382,9 @@ function generateStringFromDOM(node) {
       // Process the current node
       if (node.nodeType === Node.ELEMENT_NODE) {
         // Assign an id attribute
-        node.setAttribute('id', idCounter);
-        map[idCounter] = node
-        idCounter++;
+
+        let idSet = false
+        
 
         // Append the opening tag to the result
         result += '<' + node.tagName.toLowerCase();
@@ -358,12 +393,30 @@ function generateStringFromDOM(node) {
         const attributes = node.attributes;
         for (let i = 0; i < attributes.length; i++) {
           const attr = attributes[i];
-          result += ` ${attr.name}="${attr.value}"`;
+          if(attr.name == "id") {
+            result += ` ${attr.name}="${idCounter}"`;
+            map[idCounter] = node
+            idCounter++
+            idSet = true
+
+          }else {
+            result += ` ${attr.name}="${attr.value}"`;
+
+          }
+        }
+
+        if (!idSet) {
+          result += ` id="${idCounter}"`;
+            map[idCounter] = node
+            idCounter++
+            idSet = true
         }
 
         result += '>';
       }
-
+      if (node.nodeType === Node.TEXT_NODE || node.nodeType === Node.COMMENT_NODE) {
+        result += node.textContent;
+      }
       // Traverse child nodes
       const childNodes = node.childNodes;
       for (let i = 0; i < childNodes.length; i++) {

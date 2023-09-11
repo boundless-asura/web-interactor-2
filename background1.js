@@ -22,7 +22,7 @@ chrome.runtime.onConnect.addListener((port) => {
             port.postMessage({"status":"TRIGGER", "agent_execution_id":agent_execution_id, "last_action":"No action taken yet"})
         }
         else if(message["status"] == "RUNNING" || message["status"] == "TRIGGER") {
-            console.log("running message",message)
+            // console.log("running message 1",message["dom_content"])
             const nextStep = await getNextStep(message["agent_execution_id"], message["page_url"], message["dom_content"], message["last_action"])
             if (nextStep) {
                 port.postMessage(nextStep)
@@ -31,6 +31,7 @@ chrome.runtime.onConnect.addListener((port) => {
             console.log("page_opened_1")
             const agent_execution_id = await handlePolling()
             console.log("page_opened_2")
+            // console.log("running message 2",message["dom_content"])
             const nextStep = await getNextStep(agent_execution_id, message["page_url"], message["dom_content"], message["last_action"])
             console.log("page_opened_3")
             if (nextStep) {
