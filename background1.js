@@ -12,6 +12,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             });
         });
     }
+
 });
 chrome.runtime.onConnect.addListener((port) => {
     console.assert(port.name === "super_agi");
@@ -45,7 +46,7 @@ chrome.runtime.onConnect.addListener((port) => {
 
 
 async function getNextStep(agent_execution_id,page_url, dom_content, last_action) {
-    console.log("****dom_content_New",dom_content)
+
     const url = "http://localhost:3000/api/web_interactor/get_next_action"
     const message = {
         'dom_content': dom_content,

@@ -1,6 +1,18 @@
 const superAGIPort = chrome.runtime.connect({name: "super_agi"});
 
+function setNativeValue(element, value) {
+  console.log("element here:",element)
+  console.log(Object,Object.getOwnPropertyDescriptor(element,'value'))
+  const valueSetter = Object.getOwnPropertyDescriptor(element, 'value').set;
+  const prototype = Object.getPrototypeOf(element);
+  const prototypeValueSetter = Object.getOwnPropertyDescriptor(prototype, 'value').set;
 
+  if (valueSetter && valueSetter !== prototypeValueSetter) {
+    prototypeValueSetter.call(element, value);
+  } else {
+    valueSetter.call(element, value);
+  }
+}
 window.addEventListener('load' ,async() => {
     console.log("new page loaded",window.location.href)
     // await clearState()
@@ -42,7 +54,6 @@ window.addEventListener('load' ,async() => {
       await wait(5000)
       const extractedDOM = extractDOM()
 
-      console.log("Page_opened_dom",extractedDOM)
       await superAGIPort.postMessage({status:"PAGE_OPENED", page_url:window.location.href, last_action:"No action taken yet!", dom_content:extractedDOM })
     }
     else if (currentState == null || currentState["status"] == "POLLING")
@@ -176,6 +187,7 @@ const handleAction = (actionObj) => {
   extractDOM()
   // console.log("****",extractDOM())
   console.log("ACTION TO TAKE",actionObj)
+  // console.log("DOM RN",d)
     const {action,action_reference_element, action_reference_param} = actionObj
     if (action_reference_element && map[action_reference_element])
     {
@@ -231,6 +243,29 @@ const handleAction = (actionObj) => {
     if (action == "TYPE") {
       
       // console.log("on twitter")
+      //try 1
+      // console.log("reached map. action reference element->",action_reference_param,map[action_reference_element])
+      // map[action_reference_element].focus();
+      // if(document.execCommand('insertHTML', true, action_reference_param)){
+      //   console.log("worked")
+      // }else{
+      //   console.log("didnt work")
+      // }
+      
+      // map[action_reference_element].focus();
+      // document.execCommand('insertText', false, action_reference_param);
+      // map[action_reference_element].dispatchEvent(new Event('change', {bubbles: true}));
+      
+      //TRY 1
+      var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+      nativeInputValueSetter.call(map[action_reference_element], action_reference_param);
+      var ev = new Event("input", {
+        bubbles: true
+      });
+      map[action_reference_element].dispatchEvent(ev);
+      // map[action_reference_element].innerText=action_reference_param
+
+      //TRY 2
       const ss = new DataTransfer()
       ss.setData("text/plain", action_reference_param.slice(0,200))
       map[action_reference_element].dispatchEvent(new ClipboardEvent("paste", {
@@ -239,15 +274,17 @@ const handleAction = (actionObj) => {
         cancelable:true
       }))
       ss.clearData()
-      map[action_reference_element].innerText=action_reference_param
+
+      //TRY 3
+      map[action_reference_element].value=action_reference_param
+
       const ke1 = new KeyboardEvent('keydown', {
         bubbles: true, cancelable: true, keyCode: 13
       });
       const ke2 = new KeyboardEvent('keyup', {
         bubbles: true, cancelable: true, keyCode: 13
       });
-      console.log("reached map. action reference element->",action_reference_element,map[action_reference_element])
-      map[action_reference_element].value=action_reference_param
+      
       // map[action_reference_element].focus()
       if(!window.location.href.includes('calendar') && !window.location.href.includes('slack')){
         map[action_reference_element].dispatchEvent(ke1);
@@ -258,9 +295,8 @@ const handleAction = (actionObj) => {
       
       // const interactiveElements = ["navigation", "menu", "input", "button","textarea"]
       // if(interactiveElements.includes(map[action_reference_element].tagName)){
-      //   const ke = new KeyboardEvent('keydown', {
-      //     bubbles: true, cancelable: true, keyCode: 13
-      //   });
+      //   
+      
       //   map[action_reference_element].value=action_reference_param
       //   map[action_reference_element].focus()
       //   map[action_reference_element].dispatchEvent(ke);
@@ -380,6 +416,7 @@ function generateStringFromDOM(node) {
   function preorderTraversal(node) {
     if (node !== null) {
       // Process the current node
+      // console.log("node:",node)
       if (node.nodeType === Node.ELEMENT_NODE) {
         // Assign an id attribute
 
@@ -423,6 +460,20 @@ function generateStringFromDOM(node) {
         const childNode = childNodes[i];
         preorderTraversal(childNode);
       }
+      // console.log(node.tagName,"-")
+      if(node.tagName=='IFRAME'){
+        console.log("yes, iframe")
+        if(!window.location.href.includes('google')){
+          // var iframe_children=node.contentDocument.children[0].children
+          if(node && node.contentDocument){
+            preorderTraversal(node.contentDocument.body)
+          }
+          // for (let i = 0; i < iframe_children.length; i++) {
+          //   const iframe_childNode = iframe_children[i];
+          //   preorderTraversal(iframe_childNode);
+          // }
+        }
+      }
 
       // Append the closing tag for element nodes
       if (node.nodeType === Node.ELEMENT_NODE) {
@@ -432,10 +483,19 @@ function generateStringFromDOM(node) {
   }
 
   // Start the traversal from the root of the DOM tree
-  preorderTraversal(node);
 
+  preorderTraversal(node);
+  // console.log("RESULT",result)
   return result;
 }
 
 // Example usage:
 const extractDOM = () => {map = {};return generateStringFromDOM(document.body)};
+
+
+
+
+// VV VVV VVV IMP DONT DELETE YET
+// el.focus();
+// document.execCommand('insertText', false, 'https://gokwik.co/');
+// el.dispatchEvent(new Event('change', {bubbles: true}));
